@@ -1,0 +1,11 @@
+.venv/
+__pycache_/
+
+LossOverIterations.png
+model_0.json
+ritchievink.ipynb
+ritchievink.py
+ritchievink2.ipynb
+ritchievink3.ipynb
+sample_data_2.csv
+test2.py
