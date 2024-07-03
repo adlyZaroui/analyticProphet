@@ -123,7 +123,6 @@ class CustomProphet:
 
         dk = np.array([-np.sum(r * self.t_scaled) / self.sigma_obs**2 + k / self.sigma_k**2])
         dm = np.array([-np.sum(r) / self.sigma_obs**2 + m / self.sigma_m**2])
-        #ddelta = -np.sum(r[:, None] * self.t_scaled[:, None] * A - r[:, None] * self.change_points * A, axis=0) / self.sigma_obs**2 + np.sign(delta) / self.tau
         ddelta = -np.sum(r[:, None] * (self.t_scaled[:, None] - self.change_points) * A, axis=0) / self.sigma_obs**2 + np.sign(delta) / self.tau
         dbeta = -np.dot(r, x) / self.sigma_obs**2 + beta / self.sigma**2
     
@@ -154,7 +153,6 @@ class CustomProphet:
 
         dk = np.array([-np.sum(r * self.t_scaled) / self.sigma_obs**2 + k / self.sigma_k**2])
         dm = np.array([-np.sum(r) / self.sigma_obs**2 + m / self.sigma_m**2])
-        #ddelta = -np.sum(r[:, None] * self.t_scaled[:, None] * A - r[:, None] * self.change_points * A, axis=0) / self.sigma_obs**2 + np.sign(delta) / self.tau
         ddelta = -np.sum(r[:, None] * (self.t_scaled[:, None] - self.change_points) * A, axis=0) / self.sigma_obs**2 + np.sign(delta) / self.tau
         dbeta = -np.dot(r, x) / self.sigma_obs**2 + beta / self.sigma**2
         
