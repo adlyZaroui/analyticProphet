@@ -21,3 +21,8 @@ where $g, s, h$ represents respectively the trend, seasonality and holidays comp
 Prophet's trained udner Maximum A Posteriori - meaning priors are declared on the parameters, likelihood is declared on the data, and a function - posterior distribution - is now well-defined, using Bayes formula.
 
 $ \displaystyle \mathcal{L}_{k, m, \delta, \beta, \kappa}(Y) \ p(k, m, \delta, \beta, \kappa)$
+
+
+The original version of Prophet is no more than the L-BFGS optimization algorithm used on the loss function. The gradient is estimated using Automatic Differntiation.
+
+In this implementaiton, the same optimizer is used on the same loss, however, no gradient estimation part, instead, the gradient is provided from an analytical expression.
