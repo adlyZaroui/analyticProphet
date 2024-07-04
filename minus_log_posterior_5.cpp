@@ -90,5 +90,5 @@ double minus_log_posterior(const double* params,
     return minus_log_posterior_value;
 }
 
-// To compile:
+// To compile, on Mac OS, run the following command in the terminal:
 // g++ -std=c++17 -shared -fPIC -O3 -o libminus_log_posterior_5.so minus_log_posterior_5.cpp -I/opt/homebrew/opt/eigen/include/eigen3

@@ -1,10 +1,10 @@
-# prophet
+# FastProphet
 
 Analytic implementation of Facebook Prophet.
 
 Prophet's a time series forecasting algorithm published by Facebook Core Data Science Team back in 2017. It gained popularity since then and several companies reported using it.
 
-A successor - NeuralProphet - has been made in 2021, but it's out of the scope of this repo :)
+A successor - NeuralProphet - wad released in 2021, but it's out of the scope of this repo :)
 
 Prophet model is a Generalized Additive Model (GAM) composed of 3 components, is defined as follows
 
@@ -23,6 +23,6 @@ Prophet's trained udner Maximum A Posteriori - meaning priors are declared on th
 $ \displaystyle \mathcal{L}_{k, m, \delta, \beta, \kappa}(Y) \ p(k, m, \delta, \beta, \kappa)$
 
 
-The original version of Prophet is no more than the L-BFGS optimization algorithm used on the loss function. The gradient is estimated using Automatic Differntiation.
+The original version of Prophet is no more than the L-BFGS optimization algorithm used on the loss function. The gradient being estimated using Automatic Differentiation - the L-BFGS optimizer as well as the Automatic Differentiaiton feature are defined within Stan, which itself is written upon C++ and relies on the `eigen` library.
 
-In this implementaiton, the same optimizer is used on the same loss, however, no gradient estimation part, instead, the gradient is provided from an analytical expression.
+In this implementaiton, the same optimizer is used on the same loss, however, no gradient estimation part, instead, the gradient is provided by an analytical expression. The backend is written in C++, using `dlib` for L-BFGS and `eigen` for numerical computations, An interface similar to the original Prophet is provided.
