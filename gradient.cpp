@@ -1,15 +1,16 @@
 #include <Eigen/Dense>
 #include <cmath>
 #include <tuple>
+#include <iostream>
 
 Eigen::MatrixXd fourier_components(const Eigen::VectorXd& t_days, double period, int n) {
     Eigen::MatrixXd x(t_days.size(), 2 * n);
     double factor = 2 * M_PI / period;
     for (int i = 0; i < t_days.size(); ++i) {
-        for (int j = 1; j <= n; ++j) {
-            double angle = factor * j * t_days[i];
-            x(i, 2 * j - 2) = std::cos(angle);
-            x(i, 2 * j - 1) = std::sin(angle);
+        for (int j = 0; j < n; ++j) { // Start j from 0 for 0-based indexing
+            double angle = factor * (j + 1) * t_days[i]; // (j+1) because j starts from 0
+            x(i, j) = std::cos(angle); // Fill first half with cosines
+            x(i, j + n) = std::sin(angle); // Fill second half with sines
         }
     }
     return x;
@@ -18,8 +19,9 @@ Eigen::MatrixXd fourier_components(const Eigen::VectorXd& t_days, double period,
 std::tuple<double, double, Eigen::VectorXd, Eigen::VectorXd> extract_params(const Eigen::VectorXd& params) {
     double k = params(0);
     double m = params(1);
-    Eigen::VectorXd delta = params.segment(2, 25);
+    Eigen::VectorXd delta = params.segment(2, 25); // Extract next 25 elements for delta
     Eigen::VectorXd beta = params.tail(params.size() - 27);
+    //Eigen::VectorXd beta = params.segment(27, 20); // Ensure beta is extracted with exactly 20 elements
     return std::make_tuple(k, m, delta, beta);
 }
 
@@ -81,16 +83,25 @@ void gradient(const double* params,
 
     Eigen::VectorXd r = normalized_y_vec - g - s;
 
+    // Declare grad vector
     Eigen::VectorXd grad(params_size);
+
+    // Compute dk and dm
     grad(0) = -r.dot(t_scaled_vec) / (sigma_obs * sigma_obs) + k / (sigma_k * sigma_k);
     grad(1) = -r.sum() / (sigma_obs * sigma_obs) + m / (sigma_m * sigma_m);
 
-    for (int i = 0; i < delta.size(); ++i) {
-        grad(2 + i) = -((r.array() * (t_scaled_vec.array() > change_points_vec(i)).select(t_scaled_vec.array() - change_points_vec(i), 0)).sum()) / (sigma_obs * sigma_obs) + std::copysign(1.0, delta(i)) / tau;
-    }
+    // Compute ddelta
+    Eigen::MatrixXd t_diff = t_scaled_vec.replicate(1, change_points_vec.size()).array().rowwise() - change_points_vec.transpose().array();
+    Eigen::MatrixXd delta_contrib = t_diff.array() * A.array();
+    Eigen::VectorXd ddelta = -(r.transpose() * delta_contrib).transpose() / (sigma_obs * sigma_obs) + (delta.array().sign() / tau).matrix();
+    
+    grad.segment(2, delta.size()) = ddelta;
 
-    Eigen::VectorXd dbeta = -x.transpose() * r / (sigma_obs * sigma_obs) + beta / (sigma * sigma);
-    grad.tail(beta.size()) = dbeta;
+    // Compute dbeta
+    int beta_start_index = 2 + delta.size(); // Dynamically calculate the starting index for beta
+    Eigen::VectorXd dbeta = -(x.transpose() * r) / (sigma_obs * sigma_obs) + beta / (sigma * sigma);
+
+    grad.segment(beta_start_index, beta.size()) = dbeta;
 
     std::memcpy(grad_out, grad.data(), grad.size() * sizeof(double));
 }

@@ -6,10 +6,10 @@ Eigen::MatrixXd fourier_components(const Eigen::VectorXd& t_days, double period,
     Eigen::MatrixXd x(t_days.size(), 2 * n);
     double factor = 2 * M_PI / period;
     for (int i = 0; i < t_days.size(); ++i) {
-        for (int j = 1; j <= n; ++j) {
-            double angle = factor * j * t_days[i];
-            x(i, 2 * j - 2) = std::cos(angle);
-            x(i, 2 * j - 1) = std::sin(angle);
+        for (int j = 0; j < n; ++j) { // Start j from 0 for 0-based indexing
+            double angle = factor * (j + 1) * t_days[i]; // (j+1) because j starts from 0
+            x(i, j) = std::cos(angle); // Fill first half with cosines
+            x(i, j + n) = std::sin(angle); // Fill second half with sines
         }
     }
     return x;
