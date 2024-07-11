@@ -219,6 +219,39 @@ class CustomProphet:
         self.opt_params = opt_params.x
         self.loss_over_iterations = loss_over_iterations
         
+        
+    def fit_cpp(self, df: pd.DataFrame) -> Tuple[float, float, np.array, np.array]:
+
+        self.y = df['y'].values
+        
+        if df['ds'].dtype != 'datetime64[ns]':
+            self.ds = pd.to_datetime(df['ds'])
+        else:
+            self.ds = df['ds']
+        
+        self.t_scaled = np.array((self.ds - self.ds.min()) / (self.ds.max() - self.ds.min()))
+        self.T = df.shape[0]
+
+        # Calculate the scale period coefficient
+        self.scale_period = (self.ds.max() - self.ds.min()).days
+
+        self._normalize_y()
+        self._generate_change_points()
+
+        initial_params_dict = {
+            'k': 0,
+            'm': 0,
+            'delta': np.zeros((25,)),
+            'beta': np.zeros((2 * n_yearly,))
+        }
+        
+        initial_params_array = from_dict_to_array(initial_params_dict)
+        
+        
+        # Call the C++ function to optimize the parameters
+        
+        return -1
+        
     def add_regressor(self, regressor: pd.Series) -> None:
         pass
     

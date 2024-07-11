@@ -16,44 +16,46 @@ Eigen::MatrixXd fourier_components(const Eigen::VectorXd& t_days, double period,
 std::tuple<double, double, Eigen::VectorXd, Eigen::VectorXd> extract_params(const Eigen::VectorXd& params) {
     double k = params(0);
     double m = params(1);
-    Eigen::VectorXd delta = params.segment(2, 25); // Extract next 25 elements for delta
+    Eigen::VectorXd delta = params.segment(2, 25);
     Eigen::VectorXd beta = params.tail(params.size() - 27);
     return std::make_tuple(k, m, delta, beta);
 }
 
 extern "C" {
-    void gradient(const double* params,
-                  int params_size,
-                  const double* t_scaled,
-                  int t_scaled_size,
-                  const double* change_points,
-                  int change_points_size,
-                  double scale_period,
-                  const double* normalized_y,
-                  int normalized_y_size,
-                  double sigma_obs,
-                  double sigma_k,
-                  double sigma_m,
-                  double sigma,
-                  double tau,
-                  double* grad_out);
+    void minus_log_posterior_and_gradient(const double* params,
+                                          int params_size,
+                                          const double* t_scaled,
+                                          int t_scaled_size,
+                                          const double* change_points,
+                                          int change_points_size,
+                                          double scale_period,
+                                          const double* normalized_y,
+                                          int normalized_y_size,
+                                          double sigma_obs,
+                                          double sigma_k,
+                                          double sigma_m,
+                                          double sigma,
+                                          double tau,
+                                          double* mlp_out,
+                                          double* grad_out);
 }
 
-void gradient(const double* params,
-              int params_size,
-              const double* t_scaled,
-              int t_scaled_size,
-              const double* change_points,
-              int change_points_size,
-              double scale_period,
-              const double* normalized_y,
-              int normalized_y_size,
-              double sigma_obs,
-              double sigma_k,
-              double sigma_m,
-              double sigma,
-              double tau,
-              double* grad_out) {
+void minus_log_posterior_and_gradient(const double* params,
+                                      int params_size,
+                                      const double* t_scaled,
+                                      int t_scaled_size,
+                                      const double* change_points,
+                                      int change_points_size,
+                                      double scale_period,
+                                      const double* normalized_y,
+                                      int normalized_y_size,
+                                      double sigma_obs,
+                                      double sigma_k,
+                                      double sigma_m,
+                                      double sigma,
+                                      double tau,
+                                      double* mlp_out,
+                                      double* grad_out) {
     Eigen::Map<const Eigen::VectorXd> params_vec(params, params_size);
     Eigen::Map<const Eigen::VectorXd> t_scaled_vec(t_scaled, t_scaled_size);
     Eigen::Map<const Eigen::VectorXd> change_points_vec(change_points, change_points_size);
@@ -74,7 +76,19 @@ void gradient(const double* params,
     Eigen::MatrixXd x = fourier_components(t_scaled_vec, period, 10);
     Eigen::VectorXd s = x * beta;
 
-    Eigen::VectorXd r = normalized_y_vec - g - s;
+    Eigen::VectorXd y_pred = g + s;
+    Eigen::VectorXd r = normalized_y_vec - y_pred;
+
+    double sum_squared_diff = r.array().square().sum();
+
+    double minus_log_posterior_value = sum_squared_diff / (2 * std::pow(sigma_obs, 2)) + 
+                                       std::pow(k, 2) / (2 * std::pow(sigma_k, 2)) + 
+                                       std::pow(m, 2) / (2 * std::pow(sigma_m, 2)) + 
+                                       beta.array().square().sum() / (2 * std::pow(sigma, 2)) + 
+                                       delta.array().abs().sum() / tau;
+
+    // Set minus log posterior value
+    *mlp_out = minus_log_posterior_value;
 
     // Declare grad vector
     Eigen::VectorXd grad(params_size);
@@ -100,4 +114,4 @@ void gradient(const double* params,
 }
 
 // To compile this file on Mac OS, run:
-// g++ -std=c++17 -shared -fPIC -Ofast -o libgradient.so gradient.cpp -I/opt/homebrew/opt/eigen/include/eigen3
+// g++ -std=c++17 -shared -fPIC -Ofast -o libminus_log_posterior_and_gradient.so minus_log_posterior_and_gradient.cpp -I/opt/homebrew/opt/eigen/include/eigen3

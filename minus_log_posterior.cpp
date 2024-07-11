@@ -3,16 +3,14 @@
 #include <tuple>
 
 Eigen::MatrixXd fourier_components(const Eigen::VectorXd& t_days, double period, int n) {
-    Eigen::MatrixXd x(t_days.size(), 2 * n);
-    double factor = 2 * M_PI / period;
-    for (int i = 0; i < t_days.size(); ++i) {
-        for (int j = 0; j < n; ++j) { // Start j from 0 for 0-based indexing
-            double angle = factor * (j + 1) * t_days[i]; // (j+1) because j starts from 0
-            x(i, j) = std::cos(angle); // Fill first half with cosines
-            x(i, j + n) = std::sin(angle); // Fill second half with sines
-        }
-    }
-    return x;
+    Eigen::VectorXd x = Eigen::VectorXd::LinSpaced(n, 1, n) * (2 * M_PI / period);
+    Eigen::MatrixXd angles = t_days * x.transpose();
+    
+    Eigen::MatrixXd result(t_days.size(), 2 * n);
+    result.leftCols(n) = angles.array().cos();
+    result.rightCols(n) = angles.array().sin();
+    
+    return result;
 }
 
 std::tuple<double, double, Eigen::VectorXd, Eigen::VectorXd> extract_params(const Eigen::VectorXd& params) {
@@ -64,13 +62,12 @@ double minus_log_posterior(const double* params,
     std::tie(k, m, delta, beta) = extract_params(params_vec);
 
     // Trend component
-    Eigen::MatrixXd A = (t_scaled_vec.replicate(1, change_points_vec.size()).array() > change_points_vec.transpose().replicate(t_scaled_vec.size(), 1).array()).cast<double>();
+    Eigen::VectorXd ones = Eigen::VectorXd::Ones(t_scaled_vec.size());
 
+
+    Eigen::MatrixXd A = (t_scaled_vec.replicate(1, change_points_vec.size()).array() > change_points_vec.transpose().replicate(t_scaled_vec.size(), 1).array()).cast<double>();
     Eigen::VectorXd gamma = -delta.array() * change_points_vec.array();
-    Eigen::VectorXd g = k * t_scaled_vec.array() + m;
-    for (int i = 0; i < change_points_vec.size(); ++i) {
-        g += ((t_scaled_vec.array() > change_points_vec(i)).select(delta(i) * t_scaled_vec.array() + gamma(i), 0)).matrix();
-    }
+    Eigen::VectorXd g = (k * ones + A * delta).array() * t_scaled_vec.array() + (m * ones + A * gamma).array();
 
     // Seasonality component
     double period = 365.25 / scale_period;
@@ -91,4 +88,4 @@ double minus_log_posterior(const double* params,
 }
 
 // To compile, on Mac OS, run the following command in the terminal:
-// g++ -std=c++17 -shared -fPIC -O3 -o libminus_log_posterior_5.so minus_log_posterior_5.cpp -I/opt/homebrew/opt/eigen/include/eigen3
+// g++ -std=c++17 -shared -fPIC -Ofast -o libminus_log_posterior_5.so minus_log_posterior_5.cpp -I/opt/homebrew/opt/eigen/include/eigen3
