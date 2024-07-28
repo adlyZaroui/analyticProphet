@@ -3,6 +3,7 @@ import pandas as pd
 from scipy.optimize import minimize
 from scipy.stats import halfcauchy
 from typing import Tuple
+import ctypes # for the `fit_cpp` method
 
 N_CHANGE_POINTS = 25 # number of change points - hyperparameter
 TAU = 0.05 # changepoint prior scale - hyperparameter
@@ -54,7 +55,7 @@ class CustomProphet:
         
         self.tau = TAU # sparse prior on rate adjustments delta
         self.sigma = SIGMA # prior on fourier coefficients beta
-        self.sigma_obs = halfcauchy.rvs(loc=0, scale=SIGMA_OBS_STD, size=1)[0] #self.rng.normal(0, SIGMA_OBS_STD)
+        self.sigma_obs = self.rng.normal(0, SIGMA_OBS_STD) #halfcauchy.rvs(loc=0, scale=SIGMA_OBS_STD, size=1)[0]
 
         self.m = None
         self.k = None
@@ -218,10 +219,8 @@ class CustomProphet:
         self.opt = opt_params
         self.opt_params = opt_params.x
         self.loss_over_iterations = loss_over_iterations
-        
-        
+    
     def fit_cpp(self, df: pd.DataFrame) -> Tuple[float, float, np.array, np.array]:
-
         self.y = df['y'].values
         
         if df['ds'].dtype != 'datetime64[ns]':
@@ -232,25 +231,63 @@ class CustomProphet:
         self.t_scaled = np.array((self.ds - self.ds.min()) / (self.ds.max() - self.ds.min()))
         self.T = df.shape[0]
 
-        # Calculate the scale period coefficient
         self.scale_period = (self.ds.max() - self.ds.min()).days
-
         self._normalize_y()
         self._generate_change_points()
-
-        initial_params_dict = {
-            'k': 0,
-            'm': 0,
-            'delta': np.zeros((25,)),
-            'beta': np.zeros((2 * n_yearly,))
+        
+        # Initialize parameters
+        # 0 + init_r * N(0, 1) - STAN initialization
+        init_r = 2.0
+        params_dict = {
+            'k': init_r * self.rng.normal(),
+            'm': init_r * self.rng.normal(),
+            'delta': self.rng.normal(loc=0.0, scale=init_r, size=(25,)),
+            'beta': self.rng.normal(loc=0.0, scale=init_r, size=(2 * n_yearly,))
         }
+
+        params = from_dict_to_array(params_dict)
         
-        initial_params_array = from_dict_to_array(initial_params_dict)
+        # Load the shared library
+        lib = ctypes.CDLL('./liboptimization.so')
+
+        # Define argument and return types for the optimize function
+        lib.optimize.argtypes = [np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+                         ctypes.c_int,
+                         np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+                         ctypes.c_int,
+                         np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+                         ctypes.c_int,
+                         ctypes.c_double,
+                         np.ctypeslib.ndpointer(dtype=np.float64, ndim=1, flags='C_CONTIGUOUS'),
+                         ctypes.c_int,
+                         ctypes.c_double,
+                         ctypes.c_double,
+                         ctypes.c_double,
+                         ctypes.c_double,
+                         ctypes.c_double]
         
+        lib.optimize.restype = None
         
-        # Call the C++ function to optimize the parameters
+        lib.optimize(params,
+             len(params),
+             self.t_scaled,
+             len(self.t_scaled),
+             self.change_points,
+             len(self.change_points),
+             self.scale_period,
+             self.normalized_y,
+             len(self.normalized_y),
+             self.sigma_obs,
+             self.sigma_k, 
+             self.sigma_m,
+             self.sigma,
+             self.tau)
         
+        self.opt_params = params
+    
+        # Return whatever values are necessary
         return -1
+        
         
     def add_regressor(self, regressor: pd.Series) -> None:
         pass

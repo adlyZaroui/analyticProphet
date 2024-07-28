@@ -13,10 +13,10 @@ Eigen::MatrixXd fourier_components(const Eigen::VectorXd& t_days, double period,
     return result;
 }
 
-std::tuple<double, double, Eigen::VectorXd, Eigen::VectorXd> extract_params(const Eigen::VectorXd& params) {
+std::tuple<double, double, Eigen::VectorXd, Eigen::VectorXd> extract_params(const Eigen::Ref<const Eigen::VectorXd>& params) {
     double k = params(0);
     double m = params(1);
-    Eigen::VectorXd delta = params.segment(2, 25);
+    Eigen::VectorXd delta = params.segment(2, 25); // Extract next 25 elements for delta
     Eigen::VectorXd beta = params.tail(params.size() - 27);
     return std::make_tuple(k, m, delta, beta);
 }
