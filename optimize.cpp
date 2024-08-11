@@ -155,8 +155,8 @@ extern "C" {
         param.max_step = 1e20;
         param.ftol = 1e-4; // Line search parameter - Default STAN 1e-4
         param.wolfe = 0.9; // Wolfe condition parameter
-        param.xtol = 1e-8; // 1e-16 Tolerance for machine precision
-        param.gtol = 1e-5; // Tolerance for the first order optimality - Default STAN 1e7 * 2e-16 = 2e-9
+        param.xtol = 1e-16; // 1e-16 Tolerance for machine precision
+        param.gtol = 2e-9; // Tolerance for the first order optimality - Default STAN 1e7 * 2e-16 = 2e-9
         param.m = 45; // Number of corrections to approximate the inverse Hessian matrix
 
         lbfgsfloatval_t fx;

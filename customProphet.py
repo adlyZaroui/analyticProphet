@@ -295,7 +295,7 @@ class CustomProphet:
 
     def make_future_dataframe(self, periods, include_history=True):
         last_date = pd.to_datetime(self.ds.max())  # Ensure last_date is a datetime object
-        future_dates = [last_date + pd.Timedelta(days=i) for i in range(1, periods + 1)]  # Corrected `I` to `i`
+        future_dates = [last_date + pd.Timedelta(days=i) for i in range(1, periods + 1)]
         future_dates_df = pd.DataFrame(future_dates, columns=['ds'])
 
         if include_history:
