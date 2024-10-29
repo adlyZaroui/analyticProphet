@@ -1,4 +1,4 @@
-# FastProphet
+# AnalyticProphet
 
 Analytic implementation of Facebook Prophet.
 
